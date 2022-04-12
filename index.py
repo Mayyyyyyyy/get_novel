@@ -1,39 +1,53 @@
-import requests,parsel
-from random import randint
 
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36'
+import requests,base64
+
+home_url = 'https://webapi.gongzicp.com/home/initPcIndex'
+
+header = {
+    'User-Agent': 'Mozilla/5.0 (Macintoshntel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36'
 }
-# proxy = {'https': '106.46.136.112:808'}
 
+home_res = requests.get(home_url,headers=header).json()
 
-url = 'https://www.qbiqu.com/95_95628/'
-res = requests.get(url, headers=headers).text.encode('iso-8859-1').decode('gbk')
-# print(res)
+# print(home_res)
 
-selector = parsel.Selector(res)
-novel_name = selector.css('#info h1::text').get()
-# print(novel_name)
-chapter_name = selector.css('#list dd a::attr(href)').getall()
-# print(chapter_name)
-for chapter in chapter_name:
-#    print(chapter)
-   link_url = 'https://www.qbiqu.com'+chapter
-  #  print(link_url)
-   chapter_data = requests.get(
-       link_url, headers=headers).text.encode('iso-8859-1').decode('gbk')
-  #  print(chapter_data)
-   chapterSelector = parsel.Selector(chapter_data)
-   chapter_title = chapterSelector.css('.bookname h1::text').get()
-   chapter_content = chapterSelector.css('#content::text').getall()
-   content = '\n'.join(chapter_content)
-  #  print(content)
-   with open(f'{novel_name}.txt', mode='a', encoding='utf-8') as file:
-     file.write(chapter_title)
-     file.write('\n')
-     file.write(content)
-     file.write('\n')
-  #  break
-   
+novel_id_list = home_res['data']['recList']['finishbookslt']['list']
+# print(novel_id_list)
 
+for item in novel_id_list:
+    # novel_id = item['novel_id']
+    novel_id = 537773
+    # print(novel_id)
+    novel_url = f'https://www.gongzicp.com/novel-{novel_id}.html'
+    novel_res = requests.get(novel_url,headers=header).text
+
+    novel_info_url = f'https://webapi.gongzicp.com/novel/novelInfo?id={novel_id}'
+    novel_info_res = requests.get(novel_info_url,headers=header).json()
+    author_nickname = novel_info_res['data']['author_nickname']
+    novel_name = novel_info_res['data']['novel_name']
+    file_name = f'{novel_name}-{author_nickname}'
+
+    chapter_list_url = f'https://webapi.gongzicp.com/novel/chapterGetList?nid={novel_id}'
+    chapter_list_res = requests.get(chapter_list_url,headers=header).json()
+    # print(chapter_list_res)
+    chapter_list = chapter_list_res['data']['list']
+    # print(chapter_list)
+
+    for item in chapter_list:
+        # print(item)
+        if item['type'] == 'item':
+            chapter_name = item['name']
+            chapter_id = item['id']
+            
+            chapter_content_url = f'https://webapi.gongzicp.com/novel/chapterGetInfo?cid={chapter_id}&server=0'
+            chapter_content_res = requests.get(chapter_content_url,headers=header).json()
+            chapter_content = chapter_content_res['data']['chapterInfo']['content']
+            # print(chapter_content)
+            with open(f'{file_name}.txt',mode='a+') as file:
+               file.write(chapter_name)
+               file.write('\n')
+               file.write(chapter_content)
+               file.write('\n')
+               print('spider is running, please wait~')
+print('over~')
 
